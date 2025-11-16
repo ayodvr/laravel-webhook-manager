@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Cybrox\WebhookManager\Models\WebhookEvent;
 use Cybrox\WebhookManager\Jobs\ProcessWebhook;
+use Cybrox\WebhookManager\WebhookManagerServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -11,6 +12,13 @@ use Tests\TestCase;
 class WebhookTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function getPackageProviders($app)
+    {
+        return [
+            WebhookManagerServiceProvider::class,
+        ];
+    }
 
     /** @test */
     public function it_creates_webhook_event_and_dispatches_job()
