@@ -50,6 +50,12 @@ Set your webhook signature secret in your `.env` file:
 WEBHOOK_SIGNATURE_SECRET=your-secret-key-here
 ```
 
+### For Paystack Setup
+
+1. **Get your webhook secret** from the Paystack Dashboard → Settings → API Keys & Webhooks
+2. **Set webhook URL** to: `https://your-domain.com/webhooks/paystack`
+3. **Test webhook** using Paystack's dashboard webhook tester
+
 ## Usage
 
 ### Receiving Webhooks

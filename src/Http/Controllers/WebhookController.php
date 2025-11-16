@@ -18,7 +18,7 @@ class WebhookController
     public function handle(Request $request, string $provider)
     {
         // Determine event type from payload or headers
-        $eventType = $this->extractEventType($request);
+        $eventType = $this->extractEventType($request, $provider);
         $payload = json_encode($request->all());
         $signature = $request->header('X-Webhook-Signature');
 
@@ -40,9 +40,19 @@ class WebhookController
     /**
      * Extract the event type from the request
      */
-    protected function extractEventType(Request $request): string
+    protected function extractEventType(Request $request, string $provider = null): string
     {
-        // Assume it's in 'type' field, configurable later
-        return $request->input('type', 'unknown');
+        // Paystack uses 'event' field
+        if ($provider === 'paystack' && $request->has('event')) {
+            return $request->input('event');
+        }
+
+        // Stripe and others use 'type' field
+        if ($request->has('type')) {
+            return $request->input('type');
+        }
+
+        // Fallback to any event-like field or 'unknown'
+        return $request->input('event') ?: 'unknown';
     }
 }
