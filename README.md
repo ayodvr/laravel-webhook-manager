@@ -17,6 +17,11 @@ A reusable Laravel package for receiving, processing, and managing incoming webh
 
 ## Installation
 
+### Requirements
+
+- **PHP**: ^8.2
+- **Laravel**: ^10.0 || ^11.0 || ^12.0
+
 ### Via Composer
 
 ```bash
