@@ -7,46 +7,42 @@ use Cybrox\WebhookManager\Http\Middleware\VerifyWebhookSignature;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
-/**
- * Service provider for WebhookManager package
- */
 class WebhookManagerServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/webhook-manager.php', 'webhook-manager');
     }
 
-    /**
-     * Bootstrap services.
-     */
     public function boot(): void
     {
         Route::aliasMiddleware('webhook.signature', VerifyWebhookSignature::class);
         $this->registerRoutes();
         $this->publishResources();
+
+        // Register demo listener if in local/testing
+        if ($this->app->environment('local', 'testing') && class_exists('App\Listeners\HandlePaystackDemo')) {
+            \Illuminate\Support\Facades\Event::listen(
+                \Cybrox\WebhookManager\Events\WebhookReceived::class,
+                'App\Listeners\HandlePaystackDemo'
+            );
+        }
     }
 
-    /**
-     * Register the package routes.
-     */
     protected function registerRoutes(): void
     {
         $this->app['router']->middleware($this->middlewareAliases());
 
-        Route::middleware('webhook.signature')
+        $prefix = config('webhook-manager.route_prefix', 'webhooks');
+
+        Route::prefix($prefix)
+             ->middleware('webhook.signature')
              ->group(function () {
-                 Route::post('/webhooks/{provider}', [WebhookController::class, 'handle'])
+                 Route::post('/{provider}', [WebhookController::class, 'handle'])
                       ->name('webhook.handle');
              });
     }
 
-    /**
-     * Middleware aliases.
-     */
     protected function middlewareAliases(): array
     {
         return [
@@ -54,9 +50,6 @@ class WebhookManagerServiceProvider extends ServiceProvider
         ];
     }
 
-    /**
-     * Publish resources.
-     */
     protected function publishResources(): void
     {
         $this->publishes([

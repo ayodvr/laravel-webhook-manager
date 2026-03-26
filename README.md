@@ -9,11 +9,12 @@ A reusable Laravel package for receiving, processing, and managing incoming webh
 ## Features
 
 - **Signature Verification**: Ensures incoming requests are authentic using HMAC-SHA256.
-- **Automatic Duplicate Prevention**: Uses unique job IDs to prevent duplicate processing.
-- **Reliable Processing**: Queue-based asynchronous processing with automatic retries.
+- **Automatic Duplicate Prevention**: Uses unique provider IDs (Stripe ID, GitHub Delivery ID, etc.) or signatures to prevent duplicate processing.
+- **Reliable Processing**: Queue-based asynchronous processing with automatic status tracking and retries.
 - **Event Dispatching**: Fires Laravel events (`WebhookReceived`) for easy integration.
-- **Configurable**: Customizable retry intervals, queue names, signature secrets, and more.
-- **Multiple Providers**: Support for Stripe, PayPal, GitHub, and more.
+- **Configurable**: Customizable route prefix, retry intervals, queue names, and signature secrets.
+- **Multiple Providers**: Built-in support for Paystack, Stripe, PayPal, GitHub, and more.
+- **Interactive Demo**: Includes a built-in dashboard to simulate and monitor webhooks.
 
 ## Installation
 
@@ -50,26 +51,32 @@ Set your webhook signature secret in your `.env` file:
 WEBHOOK_SIGNATURE_SECRET=your-secret-key-here
 ```
 
-### For Paystack Setup
+## Interactive Demo
 
-1. **Get your webhook secret** from the Paystack Dashboard → Settings → API Keys & Webhooks
-2. **Set webhook URL** to: `https://your-domain.com/webhooks/paystack`
-3. **Test webhook** using Paystack's dashboard webhook tester
+The package comes with a built-in demo dashboard to help you test and visualize the webhook flow.
+
+1. **Start the server**:
+   ```bash
+   php artisan serve
+   ```
+2. **Access the dashboard**:
+   Navigate to `http://127.0.0.1:8000/demo` in your browser.
+3. **Simulate Webhooks**:
+   Click the **"Simulate Paystack Payment"** button to trigger a mock signed webhook and watch it process in real-time.
 
 ## Usage
 
 ### Receiving Webhooks
 
-Webhooks are automatically handled at the `/webhooks/{provider}` route. For example:
+Webhooks are automatically handled at the `/webhooks/{provider}` route (configurable via `route_prefix`). For example:
 
+- Paystack: `POST /webhooks/paystack`
 - Stripe: `POST /webhooks/stripe`
 - PayPal: `POST /webhooks/paypal`
 
-Configure your webhook providers to send POST requests to these URLs with a `X-Webhook-Signature` header containing the HMAC-SHA256 signature of the request body.
-
 ### Listening to Webhooks
 
-Listen to the `WebhookReceived` event to process webhook data:
+Listen to the `WebhookReceived` event in your `EventServiceProvider` or using a Listener:
 
 ```php
 <?php
@@ -78,44 +85,19 @@ namespace App\Listeners;
 
 use Cybrox\WebhookManager\Events\WebhookReceived;
 
-class ProcessStripeWebhook
+class ProcessWebhook
 {
     public function handle(WebhookReceived $event): void
     {
         $webhookEvent = $event->webhookEvent;
 
-        // Process the webhook based on provider and event type
-        switch ($webhookEvent->provider) {
-            case 'stripe':
-                $this->handleStripeWebhook($webhookEvent);
-                break;
-            case 'paypal':
-                $this->handlePaypalWebhook($webhookEvent);
-                break;
-            // Add more providers as needed
-        }
-    }
-
-    private function handleStripeWebhook($event)
-    {
-        $payload = json_decode($event->payload, true);
-
-        // Example: Handle payment succeeded
-        if ($event->event_type === 'payment.succeeded') {
-            // Update order status, send notifications, etc.
+        // Process based on provider
+        if ($webhookEvent->provider === 'paystack') {
+            $payload = json_decode($webhookEvent->payload, true);
+            // Your logic here...
         }
     }
 }
-```
-
-Register the listener in `EventServiceProvider`:
-
-```php
-protected $listen = [
-    WebhookReceived::class => [
-        ProcessStripeWebhook::class,
-    ],
-];
 ```
 
 ### Configuration Options
@@ -124,30 +106,20 @@ Edit `config/webhook-manager.php` to customize behavior:
 
 ```php
 return [
+    'route_prefix' => env('WEBHOOK_ROUTE_PREFIX', 'webhooks'),
     'signature_secret' => env('WEBHOOK_SIGNATURE_SECRET'),
     'max_attempts' => env('WEBHOOK_MAX_ATTEMPTS', 3),
     'queue' => env('WEBHOOK_QUEUE', 'webhooks'),
-    'providers' => [
-        'stripe',
-        'paypal',
-        'github',
-    ],
+    'providers' => ['stripe', 'paypal', 'github', 'paystack'],
 ];
 ```
-
-
-## Security
-
-- Webhooks are verified using HMAC-SHA256 signatures.
-- Use HTTPS in production.
-- Store signature secrets securely as environment variables.
 
 ## Testing
 
 Run the test suite:
 
 ```bash
-php artisan test tests/Feature/WebhookTest.php
+php artisan test
 ```
 
 ## Contributing

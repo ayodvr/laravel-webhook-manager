@@ -14,9 +14,10 @@ return new class extends Migration
         Schema::create('webhook_events', function (Blueprint $table) {
             $table->id();
             $table->string('provider');
+            $table->string('webhook_id')->nullable()->index();
             $table->string('event_type');
             $table->text('payload');
-            $table->text('signature')->nullable();
+            $table->string('signature', 255)->nullable()->index();
             $table->enum('status', ['pending', 'processed', 'failed'])->default('pending');
             $table->timestamp('processed_at')->nullable();
             $table->smallInteger('attempts')->default(0);

@@ -13,6 +13,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Route Prefix
+    |--------------------------------------------------------------------------
+    |
+    | The URL prefix where webhooks will be received.
+    | Default is 'webhooks', meaning routes will be '/webhooks/{provider}'.
+    |
+    */
+    'route_prefix' => env('WEBHOOK_ROUTE_PREFIX', 'webhooks'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Signature Secret
     |--------------------------------------------------------------------------
     |

@@ -7,52 +7,62 @@ use Cybrox\WebhookManager\Jobs\ProcessWebhook;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 
-/**
- * Controller for handling incoming webhook requests
- */
 class WebhookController
 {
-    /**
-     * Handle the incoming webhook
-     */
     public function handle(Request $request, string $provider)
     {
-        // Determine event type from payload or headers
-        $eventType = $this->extractEventType($request, $provider);
-        $payload = json_encode($request->all());
         $signature = $request->header('X-Webhook-Signature');
 
-        // Store the webhook event
+        $webhookId = $this->extractWebhookId($request, $provider);
+
+        $query = WebhookEvent::query();
+        if ($webhookId) {
+            $query->where('webhook_id', $webhookId);
+        } elseif ($signature) {
+            $query->where('signature', $signature);
+        }
+
+        if ($query->exists()) {
+            return response()->json(['status' => 'already_received'], 200);
+        }
+
+        $eventType = $this->extractEventType($request, $provider);
+        $payload = json_encode($request->all());
+
         $webhookEvent = WebhookEvent::create([
             'provider' => $provider,
+            'webhook_id' => $webhookId,
             'event_type' => $eventType,
             'payload' => $payload,
             'signature' => $signature,
             'status' => 'pending',
         ]);
 
-        // Dispatch job for processing
-        ProcessWebhook::dispatch($webhookEvent)->onQueue('webhooks');
+        ProcessWebhook::dispatch($webhookEvent)->onQueue(config('webhook-manager.queue', 'webhooks'));
 
         return response()->json(['status' => 'received'], 200);
     }
 
-    /**
-     * Extract the event type from the request
-     */
+    protected function extractWebhookId(Request $request, string $provider): ?string
+    {
+        return match ($provider) {
+            'stripe' => $request->input('id'),
+            'paystack' => $request->input('data.id') ?? $request->input('data.reference'),
+            'github' => $request->header('X-GitHub-Delivery'),
+            default => $request->input('id') ?? $request->input('webhook_id'),
+        };
+    }
+
     protected function extractEventType(Request $request, string $provider = null): string
     {
-        // Paystack uses 'event' field
         if ($provider === 'paystack' && $request->has('event')) {
             return $request->input('event');
         }
 
-        // Stripe and others use 'type' field
         if ($request->has('type')) {
             return $request->input('type');
         }
 
-        // Fallback to any event-like field or 'unknown'
         return $request->input('event') ?: 'unknown';
     }
 }
